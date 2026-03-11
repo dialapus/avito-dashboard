@@ -1,1 +1,4 @@
-node_modules/\n.superpowers/\n.env\ndist/
+node_modules/
+.superpowers/
+.env
+dist/

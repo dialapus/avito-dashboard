@@ -1,5 +1,6 @@
 export default function OrderList({ orders }) {
-  const list = orders?.orders || [];
+  const today = new Date().toISOString().slice(0, 10);
+  const list = (orders?.orders || []).filter((o) => o.created_at?.startsWith(today));
 
   return (
     <div className="bg-white/[0.03] border border-white/[0.08] rounded-xl p-4 flex flex-col">

@@ -21,7 +21,7 @@ function timeAgo(dateStr) {
 export default function ChatList({ chats }) {
   const unread = (chats?.chats || [])
     .filter((c) => c.unread_count > 0)
-    .sort((a, b) => new Date(b.updated) - new Date(a.updated));
+    .sort((a, b) => new Date(a.updated) - new Date(b.updated));
 
   return (
     <div className="bg-white/[0.03] border border-white/[0.08] rounded-xl p-4 flex flex-col">

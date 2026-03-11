@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { getToken } from "./avito-auth.js";
+import { getToken, refreshToken } from "./avito-auth.js";
 import { cacheGet, cacheSet } from "./cache.js";
 
 const AVITO_BASE = "https://api.avito.ru";
@@ -13,7 +13,8 @@ async function rateLimitedFetch(url, options = {}) {
 
   if (requestTimestamps.length >= 5) {
     const waitMs = 1000 - (now - requestTimestamps[0]);
-    await new Promise((r) => setTimeout(r, waitMs));
+    if (waitMs > 0) await new Promise((r) => setTimeout(r, waitMs));
+    requestTimestamps = requestTimestamps.filter((t) => Date.now() - t < 1000);
   }
 
   requestTimestamps.push(Date.now());
@@ -24,18 +25,37 @@ async function avitoFetch(path, cacheKey) {
   const cached = cacheGet(cacheKey);
   if (cached) return cached;
 
-  const token = await getToken();
-  const res = await rateLimitedFetch(`${AVITO_BASE}${path}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  const MAX_RETRIES = 3;
+  let lastError;
 
-  if (!res.ok) {
-    throw new Error(`Avito API ${path}: ${res.status}`);
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    const token = await getToken();
+    const res = await rateLimitedFetch(`${AVITO_BASE}${path}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      cacheSet(cacheKey, data, 30_000);
+      return data;
+    }
+
+    if (res.status === 401 && attempt < MAX_RETRIES) {
+      await refreshToken();
+      continue;
+    }
+
+    if (res.status === 429 && attempt < MAX_RETRIES) {
+      const backoffMs = Math.min(1000 * 2 ** attempt, 8000);
+      console.warn(`[avito-api] 429 on ${path}, retry ${attempt + 1} in ${backoffMs}ms`);
+      await new Promise((r) => setTimeout(r, backoffMs));
+      continue;
+    }
+
+    lastError = new Error(`Avito API ${path}: ${res.status}`);
   }
 
-  const data = await res.json();
-  cacheSet(cacheKey, data, 30_000);
-  return data;
+  throw lastError;
 }
 
 export async function getChats() {

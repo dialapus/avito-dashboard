@@ -6,6 +6,12 @@ let expiresAt = 0;
 const CLIENT_ID = process.env.AVITO_CLIENT_ID;
 const CLIENT_SECRET = process.env.AVITO_CLIENT_SECRET;
 
+export async function refreshToken() {
+  accessToken = null;
+  expiresAt = 0;
+  return getToken();
+}
+
 export async function getToken() {
   if (accessToken && Date.now() < expiresAt - 5 * 60 * 1000) {
     return accessToken;
