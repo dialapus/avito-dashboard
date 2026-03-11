@@ -24,6 +24,7 @@
 - **Bundler:** Vite
 - **Backend/API:** Avito REST API через прокси-сервер (Node.js Express)
 - **Auth:** Avito OAuth2 (client_credentials) — токен обновляется автоматически
+- **Deploy:** Railway (аккаунт dialapus@gmail.com, CLI установлен)
 
 ## Architecture
 
@@ -77,7 +78,7 @@
 Каждая карточка показывает:
 - Текущее значение (крупно)
 - Название метрики
-- Дельта за последний час (зелёная/красная)
+- Дельта за последний час (зелёная/красная) — вычисляется через snapshot: при каждом poll сохраняем предыдущее значение в памяти, дельта = текущее - предыдущее (за ~60 минут)
 
 ### Quadrants (4 виджета, основная область)
 
@@ -103,6 +104,7 @@
 - Хронологическая лента всех событий
 - Типы: сообщение (красная точка), заказ (зелёная), просмотры (синяя), избранное (розовая)
 - Показывает: тип, описание, время
+- Собирается client-side из тех же API-ответов (чаты, заказы, статистика) — без отдельного endpoint
 
 ### Header
 
@@ -177,12 +179,20 @@ avito-dashboard/
 └── README.md
 ```
 
+## Deployment (Railway)
+
+- Один сервис: Express server раздаёт и API, и статику (React build)
+- В production: `npm run build` собирает React → `dist/`, Express serve `dist/` + `/api/*`
+- Переменные окружения в Railway: `AVITO_CLIENT_ID`, `AVITO_CLIENT_SECRET`, `AVITO_USER_ID`
+- Railway автодеплой при push в main
+- Dockerfile или Nixpacks (Railway автодетект Node.js)
+
 ## Security
 
-- Avito credentials хранятся только в `.env` (не коммитятся)
+- Avito credentials хранятся только в `.env` локально, в Railway — через environment variables
 - Прокси-сервер — единственная точка контакта с Avito API
 - Фронтенд не имеет доступа к токенам
-- CORS ограничен localhost в dev
+- CORS ограничен localhost в dev, в production не нужен (same origin)
 
 ## Success Criteria
 
